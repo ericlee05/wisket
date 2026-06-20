@@ -7,12 +7,15 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && gh-pages -d dist"
   },
+  "homepage": "https://ericlee05.github.io/wisket/",
   "dependencies": {
     "framework7": "^9.0.5",
     "framework7-icons": "^5.0.5",
     "framework7-react": "^9.0.5",
+    "gh-pages": "^6.3.0",
     "idb": "^8.0.3",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
