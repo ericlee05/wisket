@@ -17,6 +17,7 @@ export default defineConfig({
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/wisket/',
+        scope: '/wisket/',
         icons: [
           {
             src: 'pwa-192x192.png',
