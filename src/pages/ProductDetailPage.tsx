@@ -5,6 +5,7 @@ import {
   NavRight,
   Link,
   List,
+  ListButton,
   ListItem,
   ListInput,
   Popover,
@@ -141,11 +142,16 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
           )}
         </div>
       </div>
-
-      <BlockTitle>설명</BlockTitle>
-      <Card outline>
-        <CardContent>{product?.description}</CardContent>
-      </Card>
+      
+      {product?.description.length != 0 && (
+        <>
+          <BlockTitle>설명</BlockTitle>
+          <Card outline>
+            <CardContent>{product?.description}</CardContent>
+          </Card>
+        </>
+      )}
+      
 
       {traits.length > 0 && (
         <>
@@ -193,8 +199,8 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
 
       <Popover className="product-actions-popover">
         <List dividersIos strongIos outlineIos>
-          <ListItem link popoverClose title="제품 수정" onClick={() => setEditPopupOpened(true)} />
-          <ListItem link popoverClose title="제품 삭제" onClick={handleDeleteProduct} />
+          <ListButton popoverClose title="수정" onClick={() => setEditPopupOpened(true)} />
+          <ListButton popoverClose title="삭제" onClick={handleDeleteProduct} color='red' />
         </List>
       </Popover>
 

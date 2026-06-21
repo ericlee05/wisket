@@ -5,7 +5,9 @@ import {
   NavRight,
   Link,
   List,
+  ListButton,
   ListItem,
+  Searchbar,
   SwipeoutActions,
   SwipeoutButton,
   Popover,
@@ -137,8 +139,17 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
     <Page noNavbar>
       <Navbar backLink="Back" transparent textColor="white">
         <NavRight>
+          <Link iconIos="f7:search" iconMd="material:search" searchbarEnable=".searchbar-product" />
           <Link iconIos="f7:ellipsis" iconMd="f7:ellipsis" iconOnly popoverOpen=".basket-actions-popover" />
         </NavRight>
+        <Searchbar
+          expandable
+          className="searchbar-product"
+          searchContainer=".product-list"
+          searchIn=".item-title"
+          placeholder="검색"
+          disableButton={false}
+        />
       </Navbar>
 
       <div style={{ position: 'relative', width: '100%', height: 280, backgroundColor: '#1c1c1e' }}>
@@ -164,7 +175,7 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
         </div>
       </div>
 
-      <List strong inset dividersIos mediaList>
+      <List strong inset dividersIos mediaList className="product-list searchbar-found">
         {products.length === 0 && <ListItem title="제품이 없습니다" />}
         {products.map((product) => (
           <ListItem
@@ -200,12 +211,15 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
           </ListItem>
         ))}
       </List>
+      <List strong inset dividersIos className="searchbar-not-found">
+        <ListItem title="검색 결과가 없습니다" />
+      </List>
 
       <Popover className="basket-actions-popover">
         <List dividersIos strongIos outlineIos>
-          <ListItem link popoverClose title="제품 추가" onClick={() => setAddProductPopupOpened(true)} />
-          <ListItem link popoverClose title="바스켓 수정" onClick={() => setEditBasketPopupOpened(true)} />
-          <ListItem link popoverClose title="바스켓 삭제" onClick={handleRemoveBasket} />
+          <ListButton popoverClose title="항목 추가" onClick={() => setAddProductPopupOpened(true)} />
+          <ListButton popoverClose title="수정" onClick={() => setEditBasketPopupOpened(true)} />
+          <ListButton popoverClose title="삭제" onClick={handleRemoveBasket} color='red' />
         </List>
       </Popover>
 
