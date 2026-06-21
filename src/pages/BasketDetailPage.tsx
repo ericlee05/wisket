@@ -216,6 +216,11 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
               }}
             >
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                {isPriceEnabled(basket) && (
+                  <Badge key="default_trait_price" style={{ backgroundColor: 'gray', padding: '7px' }}>
+                      {`${(product.price ?? 0).toLocaleString()}원`}
+                  </Badge>
+                )}
                 {(productTraitsById[product.id] ?? []).map((trait) => {
                   const category = categoriesById.get(trait.traitCategoryId)
                   if (!category || isDetailPageOnly(category)) return null
@@ -226,9 +231,6 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
                   )
                 })}
               </div>
-              {isPriceEnabled(basket) && (
-                <div style={{ marginTop: 4, fontSize: 13 }}>{`${(product.price ?? 0).toLocaleString()}원`}</div>
-              )}
             </div>
             <SwipeoutActions right>
               <SwipeoutButton delete onClick={() => handleDeleteProduct(product.id)}>
