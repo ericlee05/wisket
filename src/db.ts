@@ -198,6 +198,88 @@ export async function getProductTraits(productId: number): Promise<BasketProduct
   return (await dbPromise).getAllFromIndex('basketProductTraits', 'productId', productId)
 }
 
+export interface BackupData {
+  version: number
+  exportedAt: string
+  baskets: Basket[]
+  products: Product[]
+  productImages: { id: number; productId: number; blob: string }[]
+  basketTraitCategories: BasketTraitCategory[]
+  basketProductTraits: BasketProductTrait[]
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(blob)
+  })
+}
+
+export async function exportBackup(): Promise<BackupData> {
+  const db = await dbPromise
+  const [baskets, products, productImages, basketTraitCategories, basketProductTraits] = await Promise.all([
+    db.getAll('baskets'),
+    db.getAll('products'),
+    db.getAll('productImages'),
+    db.getAll('basketTraitCategories'),
+    db.getAll('basketProductTraits'),
+  ])
+  const encodedImages = await Promise.all(
+    productImages.map(async (image) => ({
+      id: image.id,
+      productId: image.productId,
+      blob: await blobToDataUrl(image.blob),
+    })),
+  )
+  return {
+    version: 3,
+    exportedAt: new Date().toISOString(),
+    baskets,
+    products,
+    productImages: encodedImages,
+    basketTraitCategories,
+    basketProductTraits,
+  }
+}
+
+function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  return fetch(dataUrl).then((res) => res.blob())
+}
+
+export async function importBackup(data: BackupData): Promise<void> {
+  if (
+    !data ||
+    !Array.isArray(data.baskets) ||
+    !Array.isArray(data.products) ||
+    !Array.isArray(data.productImages) ||
+    !Array.isArray(data.basketTraitCategories) ||
+    !Array.isArray(data.basketProductTraits)
+  ) {
+    throw new Error('Invalid backup file')
+  }
+
+  const decodedImages = await Promise.all(
+    data.productImages.map(async (image) => ({
+      id: image.id,
+      productId: image.productId,
+      blob: await dataUrlToBlob(image.blob),
+    })),
+  )
+
+  const db = await dbPromise
+  const storeNames = ['baskets', 'products', 'productImages', 'basketTraitCategories', 'basketProductTraits'] as const
+  const tx = db.transaction(storeNames, 'readwrite')
+  await Promise.all(storeNames.map((name) => tx.objectStore(name).clear()))
+  await Promise.all(data.baskets.map((basket) => tx.objectStore('baskets').put(basket)))
+  await Promise.all(data.products.map((product) => tx.objectStore('products').put(product)))
+  await Promise.all(decodedImages.map((image) => tx.objectStore('productImages').put(image)))
+  await Promise.all(data.basketTraitCategories.map((category) => tx.objectStore('basketTraitCategories').put(category)))
+  await Promise.all(data.basketProductTraits.map((trait) => tx.objectStore('basketProductTraits').put(trait)))
+  await tx.done
+}
+
 export async function setProductTraits(
   productId: number,
   traits: { traitCategoryId: number; value: string }[],
