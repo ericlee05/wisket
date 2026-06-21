@@ -12,25 +12,32 @@ import {
   Badge,
   Card,
   CardContent,
-  PhotoBrowser
+  PhotoBrowser,
+  f7,
 } from 'framework7-react'
 import type { Router } from 'framework7/types'
 import {
   addProductImage,
   deleteProduct,
   deleteProductImage,
+  getBasket,
   getProduct,
   getProductImages,
   getProductTraits,
   getTraitCategories,
+  getTraitType,
+  isPriceEnabled,
   setProductTraits,
   updateProduct,
+  BasketTraitType,
+  type Basket,
   type BasketProductTrait,
   type BasketTraitCategory,
   type Product,
   type ProductImage,
 } from '../db'
 import AddProductPopup, { type SaveProductData } from '../components/AddProductPopup'
+import { formatTraitBadgeText, formatTraitValue, truncateUrlForDisplay } from '../utils/traitDisplay'
 
 interface ProductDetailPageProps {
   basketId: string
@@ -39,6 +46,7 @@ interface ProductDetailPageProps {
 }
 
 export default function ProductDetailPage({ basketId, productId, f7router }: ProductDetailPageProps) {
+  const [basket, setBasket] = useState<Basket | null>(null)
   const [product, setProduct] = useState<Product | null>(null)
   const [images, setImages] = useState<ProductImage[]>([])
   const [imageUrls, setImageUrls] = useState<string[]>([])
@@ -67,9 +75,14 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
     setTraitCategories(await getTraitCategories(Number(basketId)))
   }
 
+  const loadBasket = async () => {
+    setBasket((await getBasket(Number(basketId))) ?? null)
+  }
+
   useEffect(() => {
     loadProduct()
     loadTraitCategories()
+    loadBasket()
     return () => {
       setImageUrls((prevUrls) => {
         prevUrls.forEach((url) => URL.revokeObjectURL(url))
@@ -99,6 +112,12 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
     f7router.back()
   }
 
+  const handleUrlTraitClick = (url: string) => {
+    f7.dialog.confirm(`${url}\n\n이 링크로 이동하시겠습니까?`, '링크 열기', () => {
+      window.open(url, '_blank', 'noopener,noreferrer')
+    })
+  }
+
   const categoriesById = new Map(traitCategories.map((category) => [category.id, category]))
 
   return (
@@ -114,7 +133,7 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
           <img
             src={imageUrls[0]}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', backgroundColor: 'transparent' }}
           />
         )}
         <div
@@ -126,14 +145,14 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
         />
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '16px 16px 20px' }}>
           <div style={{ color: '#fff', fontSize: 24, fontWeight: 700 }}>{product?.name}</div>
-          {traits.length > 0 && (
+          {traits.some((trait) => !categoriesById.get(trait.traitCategoryId)?.showDetailPageOnly) && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
               {traits.map((trait) => {
                 const category = categoriesById.get(trait.traitCategoryId)
-                if (!category) return null
+                if (!category || category.showDetailPageOnly) return null
                 return (
                   <Badge key={trait.id} style={{ backgroundColor: category.color, padding: '7px' }}>
-                    {trait.value}
+                    {formatTraitBadgeText(category, trait.value)}
                   </Badge>
                 )
               })}
@@ -152,19 +171,37 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
       )}
       
 
-      {traits.length > 0 && (
+      {(traits.length > 0 || isPriceEnabled(basket)) && (
         <>
           <BlockTitle>속성</BlockTitle>
-          <List strong inset dividersIos>
-            <ListInput key={"default_price"} label="가격" type="text" value={`${(product?.price ?? 0).toLocaleString()}원`} readonly/>
-            {traits.map((trait) => {
-              const category = categoriesById.get(trait.traitCategoryId)
-              if (!category) return null
-              return (
-                <ListInput key={trait.id} label={category.name} type="text" value={trait.value} readonly/>
-              )
-            })}
-          </List>
+          <div
+            onClick={(e) => {
+              const url = (e.target as HTMLElement).closest<HTMLElement>('[data-url]')?.dataset.url
+              if (url) handleUrlTraitClick(url)
+            }}
+          >
+            <List strong inset dividersIos>
+              {isPriceEnabled(basket) && (
+                <ListInput key={"default_price"} label="가격" type="text" value={`${(product?.price ?? 0).toLocaleString()}원`} readonly/>
+              )}
+              {traits.map((trait) => {
+                const category = categoriesById.get(trait.traitCategoryId)
+                if (!category) return null
+                const isUrl = getTraitType(category) === BasketTraitType.URL
+                return (
+                  <ListInput
+                    key={trait.id}
+                    label={category.name}
+                    type="text"
+                    value={isUrl ? truncateUrlForDisplay(trait.value) : formatTraitValue(category, trait.value)}
+                    readonly
+                    inputStyle={isUrl ? { pointerEvents: 'none', cursor: 'pointer' } : undefined}
+                    data-url={isUrl ? trait.value : undefined}
+                  />
+                )
+              })}
+            </List>
+          </div>
         </>
       )}
 
@@ -187,7 +224,14 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
                 src={url}
                 alt=""
                 onClick={() => photoBrowserRef.current?.open(index)}
-                style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', borderRadius: 8, cursor: 'pointer' }}
+                style={{
+                  width: '100%',
+                  aspectRatio: '1 / 1',
+                  objectFit: 'cover',
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  backgroundColor: 'transparent',
+                }}
               />
             ))}
           </div>
@@ -209,6 +253,7 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
         existingImages={images}
         traitCategories={traitCategories}
         existingTraits={traits}
+        usePrice={isPriceEnabled(basket)}
         onClose={() => setEditPopupOpened(false)}
         onSave={handleSaveProduct}
       />

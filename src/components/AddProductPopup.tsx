@@ -17,6 +17,7 @@ interface AddProductPopupProps {
   existingImages?: ProductImage[]
   traitCategories?: BasketTraitCategory[]
   existingTraits?: BasketProductTrait[]
+  usePrice?: boolean
   onClose: () => void
   onSave: (data: SaveProductData) => void
 }
@@ -32,6 +33,7 @@ export default function AddProductPopup({
   existingImages = [],
   traitCategories = [],
   existingTraits = [],
+  usePrice = true,
   onClose,
   onSave,
 }: AddProductPopupProps) {
@@ -94,7 +96,7 @@ export default function AddProductPopup({
     onSave({
       name: name.trim(),
       description: description.trim(),
-      price: Number(price) || 0,
+      price: usePrice ? Number(price) || 0 : 0,
       newImages: images.map((image) => image.blob),
       removedImageIds,
       traits: traitCategories.map((category) => ({
@@ -130,14 +132,16 @@ export default function AddProductPopup({
             value={description}
             onInput={(e) => setDescription(e.target.value)}
           />
-          <ListInput
-            label="가격 (원)"
-            type="number"
-            placeholder="0"
-            value={price}
-            onInput={(e) => setPrice(e.target.value)}
-            clearButton
-          />
+          {usePrice && (
+            <ListInput
+              label="가격 (원)"
+              type="number"
+              placeholder="0"
+              value={price}
+              onInput={(e) => setPrice(e.target.value)}
+              clearButton
+            />
+          )}
         </List>
 
         {traitCategories.length > 0 && (
@@ -172,7 +176,13 @@ export default function AddProductPopup({
                 <img
                   src={preview.url}
                   alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: 8,
+                    backgroundColor: 'transparent',
+                  }}
                 />
                 <Link
                   iconIos="f7:xmark_circle_fill"
@@ -188,7 +198,13 @@ export default function AddProductPopup({
                 <img
                   src={image.url}
                   alt=""
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    borderRadius: 8,
+                    backgroundColor: 'transparent',
+                  }}
                 />
                 <Link
                   iconIos="f7:xmark_circle_fill"

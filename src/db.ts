@@ -4,6 +4,27 @@ export interface Basket {
   id: number
   name: string
   description: string
+  usePrice: boolean
+}
+
+export function isPriceEnabled(basket?: Basket | null): boolean {
+  return basket?.usePrice !== false
+}
+
+export const BasketTraitType = {
+  TEXT: 'TEXT',
+  PRICE: 'PRICE',
+  INT: 'INT',
+  URL: 'URL',
+} as const
+
+export type BasketTraitType = (typeof BasketTraitType)[keyof typeof BasketTraitType]
+
+export const BASKET_TRAIT_TYPE_LABELS: Record<BasketTraitType, string> = {
+  [BasketTraitType.TEXT]: '텍스트',
+  [BasketTraitType.PRICE]: '가격',
+  [BasketTraitType.INT]: '숫자',
+  [BasketTraitType.URL]: 'URL',
 }
 
 export interface Product {
@@ -25,6 +46,17 @@ export interface BasketTraitCategory {
   basketId: number
   name: string
   color: string
+  dataType?: BasketTraitType
+  showDetailPageOnly?: boolean
+}
+
+export function getTraitType(category?: BasketTraitCategory | null): BasketTraitType {
+  return category?.dataType ?? BasketTraitType.TEXT
+}
+
+export function isDetailPageOnly(category?: BasketTraitCategory | null): boolean {
+  if (getTraitType(category) === BasketTraitType.URL) return true
+  return category?.showDetailPageOnly ?? false
 }
 
 export interface BasketProductTrait {

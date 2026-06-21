@@ -41,9 +41,19 @@ export default function HomePage() {
     }
   }, [baskets])
 
-  const handleSaveBasket = async ({ name, description, categories }: SaveBasketData) => {
-    const basketId = await addBasket({ name, description })
-    await Promise.all(categories.map((category) => addTraitCategory({ basketId, name: category.name, color: category.color })))
+  const handleSaveBasket = async ({ name, description, usePrice, categories }: SaveBasketData) => {
+    const basketId = await addBasket({ name, description, usePrice })
+    await Promise.all(
+      categories.map((category) =>
+        addTraitCategory({
+          basketId,
+          name: category.name,
+          color: category.color,
+          dataType: category.dataType,
+          showDetailPageOnly: category.showDetailPageOnly,
+        }),
+      ),
+    )
     loadBaskets()
   }
 

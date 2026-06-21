@@ -4,6 +4,7 @@ import routes from './routes'
 const f7params = {
   name: 'Wisket',
   theme: 'ios' as const,
+  darkMode: 'auto' as const,
 }
 
 function App() {

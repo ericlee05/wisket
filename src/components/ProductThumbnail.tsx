@@ -10,7 +10,14 @@ export default function ProductThumbnail({ imageUrl, size = 56 }: ProductThumbna
     <img
       src={imageUrl}
       alt=""
-      style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8, display: 'block' }}
+      style={{
+        width: size,
+        height: size,
+        objectFit: 'cover',
+        borderRadius: 8,
+        display: 'block',
+        backgroundColor: 'transparent',
+      }}
     />
   )
 }

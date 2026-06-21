@@ -26,6 +26,8 @@ import {
   getProducts,
   getProductTraits,
   getTraitCategories,
+  isDetailPageOnly,
+  isPriceEnabled,
   setProductTraits,
   updateBasket,
   updateTraitCategory,
@@ -37,6 +39,7 @@ import {
 import AddProductPopup, { type SaveProductData } from '../components/AddProductPopup'
 import AddBasketPopup, { type SaveBasketData } from '../components/AddBasketPopup'
 import ProductThumbnail from '../components/ProductThumbnail'
+import { formatTraitBadgeText } from '../utils/traitDisplay'
 
 export default function BasketDetailPage({ id, f7router }: { id: string; f7router: Router.Router }) {
   const [basket, setBasket] = useState<Basket | null>(null)
@@ -114,14 +117,27 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
     loadProducts()
   }
 
-  const handleSaveBasket = async ({ name, description, categories, deletedCategoryIds }: SaveBasketData) => {
-    await updateBasket({ id: basketId, name, description })
+  const handleSaveBasket = async ({ name, description, usePrice, categories, deletedCategoryIds }: SaveBasketData) => {
+    await updateBasket({ id: basketId, name, description, usePrice })
     await Promise.all(deletedCategoryIds.map((categoryId) => deleteTraitCategory(categoryId)))
     await Promise.all(
       categories.map((category) =>
         category.id !== undefined
-          ? updateTraitCategory({ id: category.id, basketId, name: category.name, color: category.color })
-          : addTraitCategory({ basketId, name: category.name, color: category.color }),
+          ? updateTraitCategory({
+              id: category.id,
+              basketId,
+              name: category.name,
+              color: category.color,
+              dataType: category.dataType,
+              showDetailPageOnly: category.showDetailPageOnly,
+            })
+          : addTraitCategory({
+              basketId,
+              name: category.name,
+              color: category.color,
+              dataType: category.dataType,
+              showDetailPageOnly: category.showDetailPageOnly,
+            }),
       ),
     )
     loadBasket()
@@ -157,7 +173,7 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
           <img
             src={heroImageUrl}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', backgroundColor: 'transparent' }}
           />
         )}
         <div
@@ -189,19 +205,30 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
             <div slot="media">
               <ProductThumbnail imageUrl={productThumbnails[product.id]} />
             </div>
-            <div slot="text" style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-              <Badge key="default_price" style={{ backgroundColor: 'gray', padding: '7px' }}>
-                {`${(product.price ?? 0).toLocaleString()}원`}
-              </Badge>
-              {(productTraitsById[product.id] ?? []).map((trait) => {
-                const category = categoriesById.get(trait.traitCategoryId)
-                if (!category) return null
-                return (
-                  <Badge key={trait.id} style={{ backgroundColor: category.color, padding: '7px' }}>
-                    {trait.value}
-                  </Badge>
-                )
-              })}
+            <div
+              slot="text"
+              style={{
+                display: 'block',
+                overflow: 'visible',
+                maxHeight: 'none',
+                WebkitLineClamp: 'unset',
+                WebkitBoxOrient: 'unset',
+              }}
+            >
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                {(productTraitsById[product.id] ?? []).map((trait) => {
+                  const category = categoriesById.get(trait.traitCategoryId)
+                  if (!category || isDetailPageOnly(category)) return null
+                  return (
+                    <Badge key={trait.id} style={{ backgroundColor: category.color, padding: '7px' }}>
+                      {formatTraitBadgeText(category, trait.value)}
+                    </Badge>
+                  )
+                })}
+              </div>
+              {isPriceEnabled(basket) && (
+                <div style={{ marginTop: 4, fontSize: 13 }}>{`${(product.price ?? 0).toLocaleString()}원`}</div>
+              )}
             </div>
             <SwipeoutActions right>
               <SwipeoutButton delete onClick={() => handleDeleteProduct(product.id)}>
@@ -226,6 +253,7 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
       <AddProductPopup
         opened={addProductPopupOpened}
         traitCategories={traitCategories}
+        usePrice={isPriceEnabled(basket)}
         onClose={() => setAddProductPopupOpened(false)}
         onSave={handleSaveProduct}
       />

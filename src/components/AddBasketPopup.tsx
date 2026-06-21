@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react'
-import { Popup, Page, Navbar, NavRight, Link, List, ListInput, BlockTitle, Block } from 'framework7-react'
-import type { Basket, BasketTraitCategory } from '../db'
+import { Popup, Page, Navbar, NavRight, Link, List, ListItem, ListInput, BlockTitle, Block, Toggle } from 'framework7-react'
+import { BASKET_TRAIT_TYPE_LABELS, BasketTraitType, type Basket, type BasketTraitCategory } from '../db'
 
 export interface CategoryDraft {
   id?: number
   name: string
   color: string
+  dataType: BasketTraitType
+  showDetailPageOnly: boolean
 }
 
 export interface SaveBasketData {
   name: string
   description: string
+  usePrice: boolean
   categories: CategoryDraft[]
   deletedCategoryIds: number[]
 }
@@ -38,6 +41,7 @@ export default function AddBasketPopup({
 }: AddBasketPopupProps) {
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
+  const [usePrice, setUsePrice] = useState(true)
   const [categories, setCategories] = useState<CategoryRow[]>([])
   const [deletedCategoryIds, setDeletedCategoryIds] = useState<number[]>([])
 
@@ -45,13 +49,19 @@ export default function AddBasketPopup({
     if (!opened) return
     setName(basket?.name ?? '')
     setDescription(basket?.description ?? '')
+    setUsePrice(basket?.usePrice ?? true)
     setCategories(
-      traitCategories.map((category) => ({
-        key: `existing-${category.id}`,
-        id: category.id,
-        name: category.name,
-        color: category.color,
-      })),
+      traitCategories.map((category) => {
+        const dataType = category.dataType ?? BasketTraitType.TEXT
+        return {
+          key: `existing-${category.id}`,
+          id: category.id,
+          name: category.name,
+          color: category.color,
+          dataType,
+          showDetailPageOnly: dataType === BasketTraitType.URL ? true : category.showDetailPageOnly ?? false,
+        }
+      }),
     )
     setDeletedCategoryIds([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -60,6 +70,7 @@ export default function AddBasketPopup({
   const handlePopupClosed = () => {
     setName('')
     setDescription('')
+    setUsePrice(true)
     setCategories([])
     setDeletedCategoryIds([])
     onClose()
@@ -68,12 +79,25 @@ export default function AddBasketPopup({
   const handleAddCategory = () => {
     setCategories((prev) => [
       ...prev,
-      { key: `new-${Date.now()}-${Math.random()}`, name: '', color: DEFAULT_CATEGORY_COLOR },
+      {
+        key: `new-${Date.now()}-${Math.random()}`,
+        name: '',
+        color: DEFAULT_CATEGORY_COLOR,
+        dataType: BasketTraitType.TEXT,
+        showDetailPageOnly: false,
+      },
     ])
   }
 
   const handleUpdateCategory = (key: string, changes: Partial<CategoryDraft>) => {
-    setCategories((prev) => prev.map((category) => (category.key === key ? { ...category, ...changes } : category)))
+    setCategories((prev) =>
+      prev.map((category) => {
+        if (category.key !== key) return category
+        const updated = { ...category, ...changes }
+        if (updated.dataType === BasketTraitType.URL) updated.showDetailPageOnly = true
+        return updated
+      }),
+    )
   }
 
   const handleRemoveCategory = (key: string) => {
@@ -89,9 +113,16 @@ export default function AddBasketPopup({
     onSave({
       name: name.trim(),
       description: description.trim(),
+      usePrice,
       categories: categories
         .filter((category) => category.name.trim() !== '')
-        .map((category) => ({ id: category.id, name: category.name.trim(), color: category.color })),
+        .map((category) => ({
+          id: category.id,
+          name: category.name.trim(),
+          color: category.color,
+          dataType: category.dataType,
+          showDetailPageOnly: category.dataType === BasketTraitType.URL ? true : category.showDetailPageOnly,
+        })),
       deletedCategoryIds,
     })
   }
@@ -122,40 +153,83 @@ export default function AddBasketPopup({
             value={description}
             onInput={(e) => setDescription(e.target.value)}
           />
+          <ListItem
+            checkbox
+            title="가격 사용"
+            checked={usePrice}
+            onChange={(e) => setUsePrice(e.target.checked)}
+          />
         </List>
 
         <BlockTitle>속성 카테고리</BlockTitle>
         <Block strong inset>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {categories.map((category) => (
-              <div key={category.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input
-                  type="color"
-                  value={category.color}
-                  onChange={(e) => handleUpdateCategory(category.key, { color: e.target.value })}
-                  style={{ width: 32, height: 32, border: 'none', padding: 0, borderRadius: 6, flexShrink: 0 }}
-                />
-                <input
-                  type="text"
-                  placeholder="카테고리 명칭"
-                  value={category.name}
-                  onChange={(e) => handleUpdateCategory(category.key, { name: e.target.value })}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    border: 'none',
-                    outline: 'none',
-                    fontSize: 16,
-                    background: 'transparent',
-                    color: 'var(--f7-text-color)',
-                  }}
-                />
-                <Link
-                  iconIos="f7:xmark_circle_fill"
-                  iconMd="f7:xmark_circle_fill"
-                  iconOnly
-                  onClick={() => handleRemoveCategory(category.key)}
-                />
+              <div key={category.key} style={{ paddingBottom: 8, borderBottom: '1px solid var(--f7-list-item-border-color)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  <input
+                    type="text"
+                    placeholder="카테고리 명칭"
+                    value={category.name}
+                    onChange={(e) => handleUpdateCategory(category.key, { name: e.target.value })}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      border: 'none',
+                      outline: 'none',
+                      fontSize: 16,
+                      background: 'transparent',
+                      color: 'var(--f7-text-color)',
+                    }}
+                  />
+                  <Link
+                    iconIos="f7:xmark_circle_fill"
+                    iconMd="f7:xmark_circle_fill"
+                    iconOnly
+                    onClick={() => handleRemoveCategory(category.key)}
+                  />
+                </div>
+                <List strong inset dividersIos style={{ margin: 0 }}>
+                  <ListInput
+                    label="색상"
+                    type="colorpicker"
+                    value={{ hex: category.color }}
+                    colorPickerParams={{ modules: ['wheel'] }}
+                    onColorPickerChange={(value) =>
+                      handleUpdateCategory(category.key, { color: value.hex ?? category.color })
+                    }
+                  >
+                    <div
+                      slot="media"
+                      style={{ width: 20, height: 20, borderRadius: '50%', backgroundColor: category.color }}
+                    />
+                  </ListInput>
+                  <ListItem title="유형" smartSelect smartSelectParams={{ openIn: 'popover' }}>
+                    <select
+                      value={category.dataType}
+                      onChange={(e) =>
+                        handleUpdateCategory(category.key, { dataType: e.target.value as BasketTraitType })
+                      }
+                    >
+                      {Object.values(BasketTraitType).map((type) => (
+                        <option key={type} value={type}>
+                          {BASKET_TRAIT_TYPE_LABELS[type]}
+                        </option>
+                      ))}
+                    </select>
+                  </ListItem>
+                  {category.dataType !== BasketTraitType.URL && (
+                    <ListItem title="상세 페이지에서만 표시">
+                      <Toggle
+                        slot="after"
+                        checked={category.showDetailPageOnly}
+                        onToggleChange={(checked: boolean) =>
+                          handleUpdateCategory(category.key, { showDetailPageOnly: checked })
+                        }
+                      />
+                    </ListItem>
+                  )}
+                </List>
               </div>
             ))}
             <Link onClick={handleAddCategory}>+ 카테고리 추가</Link>
