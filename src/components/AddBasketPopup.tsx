@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Popup, Page, Navbar, NavRight, Link, List, ListItem, ListInput, BlockTitle, Block, Toggle } from 'framework7-react'
+import type { ColorPicker } from 'framework7/types'
 import { BASKET_TRAIT_TYPE_LABELS, BasketTraitType, type Basket, type BasketTraitCategory } from '../db'
 
 export interface CategoryDraft {
@@ -194,7 +195,7 @@ export default function AddBasketPopup({
                     label="색상"
                     type="colorpicker"
                     value={{ hex: category.color }}
-                    colorPickerParams={{ modules: ['wheel'] }}
+                    colorPickerParams={{ modules: ['wheel'] } as ColorPicker.Parameters}
                     onColorPickerChange={(value) =>
                       handleUpdateCategory(category.key, { color: value.hex ?? category.color })
                     }
