@@ -192,7 +192,7 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
       </div>
 
       <List strong inset dividersIos mediaList className="product-list searchbar-found">
-        {products.length === 0 && <ListItem title="제품이 없습니다" />}
+        {products.length === 0 && <ListItem title="항목이 없습니다" />}
         {products.map((product) => (
           <ListItem
             key={product.id}

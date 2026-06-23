@@ -131,7 +131,7 @@ export default function AddBasketPopup({
   return (
     <Popup opened={opened} push onPopupClosed={handlePopupClosed}>
       <Page>
-        <Navbar title={basket ? '바스켓 수정' : '새 바스켓'}>
+        <Navbar title={basket ? '컬렉션 수정' : '새 컬렉션'}>
           <NavRight>
             <Link popupClose onClick={handleSave}>
               저장
@@ -142,7 +142,7 @@ export default function AddBasketPopup({
           <ListInput
             label="이름"
             type="text"
-            placeholder="바스켓 이름"
+            placeholder="컬렉션 이름"
             value={name}
             onInput={(e) => setName(e.target.value)}
             clearButton
@@ -150,7 +150,7 @@ export default function AddBasketPopup({
           <ListInput
             label="설명"
             type="textarea"
-            placeholder="바스켓 설명"
+            placeholder="컬렉션 설명"
             value={description}
             onInput={(e) => setDescription(e.target.value)}
           />

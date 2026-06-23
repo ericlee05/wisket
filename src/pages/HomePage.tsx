@@ -86,7 +86,7 @@ export default function HomePage() {
       />
 
       <List strong inset dividersIos mediaList className="basket-list searchbar-found">
-        {baskets.length === 0 && <ListItem title="바스켓이 없습니다" />}
+        {baskets.length === 0 && <ListItem title="컬렉션이 없습니다" />}
         {baskets.map((basket) => (
           <ListItem
             key={basket.id}

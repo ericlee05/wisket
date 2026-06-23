@@ -109,7 +109,7 @@ export default function AddProductPopup({
   return (
     <Popup opened={opened} push onPopupClosed={handlePopupClosed}>
       <Page>
-        <Navbar title={product ? '제품 수정' : '새 제품'}>
+        <Navbar title={product ? '항목 수정' : '새 항목'}>
           <NavRight>
             <Link popupClose onClick={handleSave}>
               저장
@@ -118,9 +118,9 @@ export default function AddProductPopup({
         </Navbar>
         <List strong inset dividersIos>
           <ListInput
-            label="제품명"
+            label="항목명"
             type="text"
-            placeholder="제품 이름"
+            placeholder="항목 이름"
             value={name}
             onInput={(e) => setName(e.target.value)}
             clearButton
@@ -128,7 +128,7 @@ export default function AddProductPopup({
           <ListInput
             label="설명"
             type="textarea"
-            placeholder="제품 설명"
+            placeholder="항목 설명"
             value={description}
             onInput={(e) => setDescription(e.target.value)}
           />
