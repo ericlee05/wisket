@@ -104,3 +104,19 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+.home-fab > a {
+  width: 65px;
+  height: 65px;
+  border-radius: 32.5px;
+}
+
+.home-tabbar::before,
+.home-tabbar::after {
+  display: none;
+}
+
+.page[data-name='home']:has(#tab-map.tab-active) .home-navbar .title,
+.page[data-name='home']:has(#tab-map.tab-active) .home-navbar .title-large {
+  visibility: hidden;
+}

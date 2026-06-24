@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import L from 'leaflet'
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
 import markerIcon from 'leaflet/dist/images/marker-icon.png'
@@ -54,11 +54,12 @@ function InvalidateOnResize() {
 export default function MapView({ lat, lng, zoom = 15, height = 240, onLocationChange }: MapViewProps) {
   return (
     <div style={{ width: '100%', height, borderRadius: 8, overflow: 'hidden' }}>
-      <MapContainer center={[lat, lng]} zoom={zoom} style={{ width: '100%', height: '100%' }}>
+      <MapContainer center={[lat, lng]} zoom={zoom} zoomControl={false} style={{ width: '100%', height: '100%' }}>
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <ZoomControl position="bottomright" />
         <Marker position={[lat, lng]} />
         <RecenterMap lat={lat} lng={lng} />
         <InvalidateOnResize />
