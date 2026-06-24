@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Popup, Page, Navbar, NavRight, Link, List, ListInput, BlockTitle, Block } from 'framework7-react'
-import type { BasketProductTrait, BasketTraitCategory, Product, ProductImage } from '../db'
+import { Popup, Page, Navbar, NavRight, Link, List, ListInput, ListItem, BlockTitle, Block } from 'framework7-react'
+import { BasketTraitType, getTraitType, type BasketProductTrait, type BasketTraitCategory, type Product, type ProductImage } from '../db'
+import { formatLocationValue } from '../utils/traitDisplay'
+import LocationPickerPopup from './LocationPickerPopup'
 
 export interface SaveProductData {
   name: string
@@ -44,6 +46,7 @@ export default function AddProductPopup({
   const [existingPreviews, setExistingPreviews] = useState<{ id: number; url: string }[]>([])
   const [removedImageIds, setRemovedImageIds] = useState<number[]>([])
   const [traitValues, setTraitValues] = useState<Record<number, string>>({})
+  const [locationPickerCategoryId, setLocationPickerCategoryId] = useState<number | null>(null)
 
   useEffect(() => {
     if (!opened) return
@@ -148,22 +151,37 @@ export default function AddProductPopup({
           <>
             <BlockTitle>속성</BlockTitle>
             <List strong inset dividersIos>
-              {traitCategories.map((category) => (
-                <ListInput
-                  key={category.id}
-                  label={category.name}
-                  type="text"
-                  placeholder={category.name}
-                  value={traitValues[category.id] ?? ''}
-                  onInput={(e) => setTraitValues((prev) => ({ ...prev, [category.id]: e.target.value }))}
-                  clearButton
-                >
-                  <div
-                    slot="media"
-                    style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: category.color }}
-                  />
-                </ListInput>
-              ))}
+              {traitCategories.map((category) =>
+                getTraitType(category) === BasketTraitType.LOCATION ? (
+                  <ListItem
+                    key={category.id}
+                    link
+                    title={category.name}
+                    after={traitValues[category.id] ? formatLocationValue(traitValues[category.id]) : '미지정'}
+                    onClick={() => setLocationPickerCategoryId(category.id)}
+                  >
+                    <div
+                      slot="media"
+                      style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: category.color }}
+                    />
+                  </ListItem>
+                ) : (
+                  <ListInput
+                    key={category.id}
+                    label={category.name}
+                    type="text"
+                    placeholder={category.name}
+                    value={traitValues[category.id] ?? ''}
+                    onInput={(e) => setTraitValues((prev) => ({ ...prev, [category.id]: e.target.value }))}
+                    clearButton
+                  >
+                    <div
+                      slot="media"
+                      style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: category.color }}
+                    />
+                  </ListInput>
+                ),
+              )}
             </List>
           </>
         )}
@@ -235,6 +253,16 @@ export default function AddProductPopup({
           </div>
         </Block>
       </Page>
+
+      <LocationPickerPopup
+        opened={locationPickerCategoryId !== null}
+        value={locationPickerCategoryId !== null ? traitValues[locationPickerCategoryId] : undefined}
+        onClose={() => setLocationPickerCategoryId(null)}
+        onSave={(value) => {
+          if (locationPickerCategoryId === null) return
+          setTraitValues((prev) => ({ ...prev, [locationPickerCategoryId]: value }))
+        }}
+      />
     </Popup>
   )
 }

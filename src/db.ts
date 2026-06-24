@@ -16,6 +16,7 @@ export const BasketTraitType = {
   PRICE: 'PRICE',
   INT: 'INT',
   URL: 'URL',
+  LOCATION: 'LOCATION',
 } as const
 
 export type BasketTraitType = (typeof BasketTraitType)[keyof typeof BasketTraitType]
@@ -25,6 +26,7 @@ export const BASKET_TRAIT_TYPE_LABELS: Record<BasketTraitType, string> = {
   [BasketTraitType.PRICE]: '가격',
   [BasketTraitType.INT]: '숫자',
   [BasketTraitType.URL]: 'URL',
+  [BasketTraitType.LOCATION]: '위치',
 }
 
 export interface Product {

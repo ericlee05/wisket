@@ -37,7 +37,8 @@ import {
   type ProductImage,
 } from '../db'
 import AddProductPopup, { type SaveProductData } from '../components/AddProductPopup'
-import { formatTraitBadgeText, formatTraitValue, truncateUrlForDisplay } from '../utils/traitDisplay'
+import MapView from '../components/MapView'
+import { formatTraitBadgeText, formatTraitValue, parseLocationValue, truncateUrlForDisplay } from '../utils/traitDisplay'
 
 interface ProductDetailPageProps {
   basketId: string
@@ -184,24 +185,51 @@ export default function ProductDetailPage({ basketId, productId, f7router }: Pro
               {isPriceEnabled(basket) && (
                 <ListInput key={"default_price"} label="가격" type="text" value={`${(product?.price ?? 0).toLocaleString()}원`} readonly/>
               )}
-              {traits.map((trait) => {
-                const category = categoriesById.get(trait.traitCategoryId)
-                if (!category) return null
-                const isUrl = getTraitType(category) === BasketTraitType.URL
-                return (
-                  <ListInput
-                    key={trait.id}
-                    label={category.name}
-                    type="text"
-                    value={isUrl ? truncateUrlForDisplay(trait.value) : formatTraitValue(category, trait.value)}
-                    readonly
-                    inputStyle={isUrl ? { pointerEvents: 'none', cursor: 'pointer' } : undefined}
-                    data-url={isUrl ? trait.value : undefined}
-                  />
-                )
-              })}
+              {traits
+                .filter((trait) => {
+                  const category = categoriesById.get(trait.traitCategoryId)
+                  return category && getTraitType(category) !== BasketTraitType.LOCATION
+                })
+                .map((trait) => {
+                  const category = categoriesById.get(trait.traitCategoryId)!
+                  const isUrl = getTraitType(category) === BasketTraitType.URL
+                  return (
+                    <ListInput
+                      key={trait.id}
+                      label={category.name}
+                      type="text"
+                      value={isUrl ? truncateUrlForDisplay(trait.value) : formatTraitValue(category, trait.value)}
+                      readonly
+                      inputStyle={isUrl ? { pointerEvents: 'none', cursor: 'pointer' } : undefined}
+                      data-url={isUrl ? trait.value : undefined}
+                    />
+                  )
+                })}
             </List>
           </div>
+        </>
+      )}
+
+      {traits.some((trait) => {
+        const category = categoriesById.get(trait.traitCategoryId)
+        return !!category && getTraitType(category) === BasketTraitType.LOCATION && !!parseLocationValue(trait.value)
+      }) && (
+        <>
+          <BlockTitle>위치</BlockTitle>
+          {traits.map((trait) => {
+            const category = categoriesById.get(trait.traitCategoryId)
+            if (!category || getTraitType(category) !== BasketTraitType.LOCATION) return null
+            const location = parseLocationValue(trait.value)
+            if (!location) return null
+            return (
+              <div key={trait.id} style={{ padding: '0 16px 16px' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--f7-text-color)', marginBottom: 8 }}>
+                  {category.name}
+                </div>
+                <MapView lat={location.lat} lng={location.lng} />
+              </div>
+            )
+          })}
         </>
       )}
 
