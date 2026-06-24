@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type TouchEvent } from 'react'
 import {
   Page,
   Navbar,
@@ -14,8 +14,6 @@ import {
   Badge,
   Icon,
   Card,
-  CardContent,
-  CardFooter,
   f7,
 } from 'framework7-react'
 import type { Router } from 'framework7/types'
@@ -46,6 +44,13 @@ import AddBasketPopup, { type SaveBasketData } from '../components/AddBasketPopu
 import ProductThumbnail from '../components/ProductThumbnail'
 import { formatTraitBadgeText } from '../utils/traitDisplay'
 
+const VIEW_MODE_STORAGE_KEY = 'basketDetailViewMode'
+
+const loadStoredViewMode = (): 'list' | 'gallery' => {
+  const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY)
+  return stored === 'gallery' ? 'gallery' : 'list'
+}
+
 export default function BasketDetailPage({ id, f7router }: { id: string; f7router: Router.Router }) {
   const [basket, setBasket] = useState<Basket | null>(null)
   const [products, setProducts] = useState<Product[]>([])
@@ -55,7 +60,9 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
   const [productTraitsById, setProductTraitsById] = useState<Record<number, BasketProductTrait[]>>({})
   const [addProductPopupOpened, setAddProductPopupOpened] = useState(false)
   const [editBasketPopupOpened, setEditBasketPopupOpened] = useState(false)
-  const [viewMode, setViewMode] = useState<'list' | 'gallery'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'gallery'>(loadStoredViewMode)
+  const [galleryColumns, setGalleryColumns] = useState(3)
+  const pinchStateRef = useRef<{ distance: number; columns: number } | null>(null)
   const basketId = Number(id)
 
   const loadBasket = async () => {
@@ -111,6 +118,10 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [basketId])
 
+  useEffect(() => {
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode)
+  }, [viewMode])
+
   const handleSaveProduct = async ({ name, description, price, newImages, traits }: SaveProductData) => {
     const productId = await addProduct({ name, description, price, basketId })
     await Promise.all(newImages.map((blob) => addProductImage({ productId, blob })))
@@ -161,7 +172,46 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
     f7.popover.open('.view-mode-popover', targetEl)
   }
 
+  const getTouchDistance = (touches: TouchEvent<HTMLDivElement>['touches']) => {
+    const a = touches[0]
+    const b = touches[1]
+    return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY)
+  }
+
+  const handleGalleryTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      pinchStateRef.current = { distance: getTouchDistance(e.touches), columns: galleryColumns }
+    }
+  }
+
+  const handleGalleryTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2 && pinchStateRef.current) {
+      const distance = getTouchDistance(e.touches)
+      const scale = distance / pinchStateRef.current.distance
+      const next = Math.round(pinchStateRef.current.columns / scale)
+      const clamped = Math.min(6, Math.max(1, next))
+      setGalleryColumns((prev) => (prev === clamped ? prev : clamped))
+    }
+  }
+
+  const handleGalleryTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length < 2) {
+      pinchStateRef.current = null
+    }
+  }
+
   const categoriesById = new Map(traitCategories.map((category) => [category.id, category]))
+
+  const sortedProducts = [...products].sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 0
+  const galleryGap = 5
+  const galleryHorizontalPadding = 10
+  const cardWidth =
+    screenWidth > 0
+      ? (screenWidth - galleryHorizontalPadding - galleryGap * (galleryColumns - 1)) / galleryColumns
+      : 0
+  const showGalleryBadges = screenWidth === 0 || cardWidth / screenWidth >= 0.45
 
   return (
     <Page noNavbar>
@@ -205,8 +255,8 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
 
       {viewMode === 'list' ? (
         <List strong inset dividersIos mediaList className="product-list searchbar-found" style={{ marginTop: 16 }}>
-          {products.length === 0 && <ListItem title="항목이 없습니다" />}
-          {products.map((product) => (
+          {sortedProducts.length === 0 && <ListItem title="항목이 없습니다" />}
+          {sortedProducts.map((product) => (
             <ListItem
               key={product.id}
               title={product.name}
@@ -255,128 +305,130 @@ export default function BasketDetailPage({ id, f7router }: { id: string; f7route
         </List>
       ) : (
         <div
-          className="grid grid-cols-4 grid-gap product-list searchbar-found"
-          style={{ padding: '0 16px 16px', marginTop: 16 }}
+          className="grid product-list searchbar-found"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${galleryColumns}, 1fr)`,
+            padding: 5,
+            marginTop: 5,
+            gap: 5,
+            touchAction: 'pan-y',
+          }}
+          onTouchStart={handleGalleryTouchStart}
+          onTouchMove={handleGalleryTouchMove}
+          onTouchEnd={handleGalleryTouchEnd}
+          onTouchCancel={handleGalleryTouchEnd}
         >
-          {products.length === 0 && (
+          {sortedProducts.length === 0 && (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--f7-text-color)', padding: 16 }}>
               항목이 없습니다
             </div>
           )}
-          {products.map((product) => (
+          {sortedProducts.map((product) => (
             <Link
               key={product.id}
               href={`/basket/${basketId}/product/${product.id}/`}
               style={{ color: 'inherit', display: 'block' }}
             >
-              <Card style={{ margin: 0 }}>
-                <CardContent
+              <Card
+                style={{
+                  margin: 0,
+                  position: 'relative',
+                  width: '100%',
+                  aspectRatio: '1 / 1',
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  backgroundColor: productThumbnails[product.id] ? 'var(--f7-page-bg-color)' : '#000',
+                }}
+              >
+                {productThumbnails[product.id] && (
+                  <img
+                    src={productThumbnails[product.id]}
+                    alt=""
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                    }}
+                  />
+                )}
+                <div
                   style={{
-                    width: '100%',
-                    aspectRatio: '1 / 1',
-                    borderRadius: 8,
-                    overflow: 'hidden',
-                    backgroundColor: productThumbnails[product.id] ? 'var(--f7-page-bg-color)' : '#000',
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    justifyContent: 'flex-start',
-                    padding: productThumbnails[product.id] ? 0 : 8,
+                    position: 'absolute',
+                    inset: 0,
+                    background: productThumbnails[product.id]
+                      ? 'linear-gradient(to bottom, rgba(0,0,0,0) 50%, rgba(0,0,0,0.75) 100%)'
+                      : 'none',
+                  }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    padding: 8,
                   }}
                 >
-                  {productThumbnails[product.id] ? (
-                    <img
-                      src={productThumbnails[product.id]}
-                      alt=""
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                    />
-                  ) : (
-                    <span
-                      style={{
-                        color: '#fff',
-                        fontSize: 16,
-                        maxWidth: '85%',
-                        textAlign: 'left',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                      }}
-                    >
-                      {product.name}
-                    </span>
-                  )}
-                </CardContent>
-                {productThumbnails[product.id] ? (
-                  <CardContent
+                  <div
                     className="item-title"
                     style={{
-                      padding: 0,
-                      fontSize: 21,
-                      maxWidth: '75%',
-                      margin: '4px auto 0',
-                      textAlign: 'center',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
+                      color: '#fff',
+                      fontSize: 14,
+                      fontWeight: 600,
+                      textAlign: 'left',
+                      whiteSpace: 'normal',
+                      wordBreak: 'break-word',
                     }}
                   >
                     {product.name}
-                  </CardContent>
-                ) : (
-                  <span className="item-title" style={{ display: 'none' }}>
-                    {product.name}
-                  </span>
-                )}
-                <CardFooter
-                  style={{
-                    padding: 0,
-                    minHeight: 'auto',
-                    flexWrap: 'wrap',
-                    justifyContent: 'flex-start',
-                    gap: 4,
-                    marginTop: 4,
-                    maxWidth: '100%',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {isPriceEnabled(basket) && (
-                    <Badge
-                      key="default_trait_price"
-                      style={{
-                        backgroundColor: 'gray',
-                        padding: '5px',
-                        maxWidth: '100%',
-                        minWidth: 0,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        fontSize: 10,
-                      }}
-                    >
-                      {`${(product.price ?? 0).toLocaleString()}원`}
-                    </Badge>
+                  </div>
+                  {showGalleryBadges && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4, overflow: 'hidden' }}>
+                      {isPriceEnabled(basket) && (
+                        <Badge
+                          key="default_trait_price"
+                          style={{
+                            backgroundColor: 'gray',
+                            padding: '5px',
+                            maxWidth: '100%',
+                            minWidth: 0,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            fontSize: 10,
+                          }}
+                        >
+                          {`${(product.price ?? 0).toLocaleString()}원`}
+                        </Badge>
+                      )}
+                      {(productTraitsById[product.id] ?? []).map((trait) => {
+                        const category = categoriesById.get(trait.traitCategoryId)
+                        if (!category || isDetailPageOnly(category)) return null
+                        return (
+                          <Badge
+                            key={trait.id}
+                            style={{
+                              backgroundColor: category.color,
+                              padding: '5px',
+                              maxWidth: '100%',
+                              minWidth: 0,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              fontSize: 10,
+                            }}
+                          >
+                            {formatTraitBadgeText(category, trait.value)}
+                          </Badge>
+                        )
+                      })}
+                    </div>
                   )}
-                  {(productTraitsById[product.id] ?? []).map((trait) => {
-                    const category = categoriesById.get(trait.traitCategoryId)
-                    if (!category || isDetailPageOnly(category)) return null
-                    return (
-                      <Badge
-                        key={trait.id}
-                        style={{
-                          backgroundColor: category.color,
-                          padding: '5px',
-                          maxWidth: '100%',
-                          minWidth: 0,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          fontSize: 10,
-                        }}
-                      >
-                        {formatTraitBadgeText(category, trait.value)}
-                      </Badge>
-                    )
-                  })}
-                </CardFooter>
+                </div>
               </Card>
             </Link>
           ))}
