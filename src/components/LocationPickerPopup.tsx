@@ -26,9 +26,19 @@ export default function LocationPickerPopup({ opened, value, onClose, onSave }: 
 
   useEffect(() => {
     if (!opened) return
-    const parsed = parseLocationValue(value)
-    setLat(parsed.lat)
-    setLng(parsed.lng)
+    if (value) {
+      const parsed = parseLocationValue(value)
+      setLat(parsed.lat)
+      setLng(parsed.lng)
+      return
+    }
+    setLat(DEFAULT_LAT)
+    setLng(DEFAULT_LNG)
+    if (!navigator.geolocation) return
+    navigator.geolocation.getCurrentPosition(({ coords }) => {
+      setLat(coords.latitude)
+      setLng(coords.longitude)
+    })
   }, [opened, value])
 
   const handleSave = () => {
